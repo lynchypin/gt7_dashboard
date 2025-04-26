@@ -32,4 +32,41 @@ selected_car = st.selectbox("Select Car", cars_df[car_name_col].tolist())
 
 # --- Show full info for selected items ---
 track_info = tracks_df[tracks_df[track_name_col] == selected_track].iloc[0]
-car_info = cars_df[cars_df[car_name_col] ==
+car_info = cars_df[cars_df[car_name_col] == selected_car].iloc[0]
+
+st.subheader("Selected Track Info")
+st.write(track_info)
+
+st.subheader("Selected Car Info")
+st.write(car_info)
+
+# --- GCS Integration ---
+# Load GCS credentials from Streamlit secrets
+gcs_credentials = st.secrets["gcs"]
+storage_client = storage.Client.from_service_account_info(gcs_credentials)
+
+# Set your bucket name
+BUCKET_NAME = "gt7-telemetry"
+
+# List JSON telemetry files in the bucket
+def list_telemetry_files():
+    bucket = storage_client.bucket(BUCKET_NAME)
+    blobs = bucket.list_blobs()
+    return [blob.name for blob in blobs if blob.name.endswith('.json')]
+
+# Download a selected telemetry file
+def download_telemetry_file(filename):
+    bucket = storage_client.bucket(BUCKET_NAME)
+    blob = bucket.blob(filename)
+    data = blob.download_as_text()
+    return json.loads(data)
+
+# --- Telemetry file selection and preview ---
+st.subheader("Select a Telemetry Session File")
+telemetry_files = list_telemetry_files()
+selected_file = st.selectbox("Telemetry File", telemetry_files)
+
+if selected_file:
+    st.write(f"Selected file: {selected_file}")
+    telemetry_data = download_telemetry_file(selected_file)
+    st.write("First 3 data points:", telemetry_data[:3])  # Show a preview
