@@ -16,7 +16,7 @@ def get_gcs_client():
     return storage.Client(credentials=gcs_creds)
 
 # --- Helper: List JSON files in GCS bucket ---
-def list_gcs_json_files(prefix="data/"):
+def list_gcs_json_files(prefix=""):
     client = get_gcs_client()
     bucket = client.bucket(gcs_bucket)
     blobs = bucket.list_blobs(prefix=prefix)
