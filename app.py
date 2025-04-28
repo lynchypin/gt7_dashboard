@@ -33,7 +33,6 @@ def load_gcs_json(blob_name):
 # --- Load car and track metadata ---
 @st.cache_data
 def load_metadata():
-    # Adjust filenames/paths as needed
     cars = pd.read_csv("cars.csv")
     tracks = pd.read_csv("tracks.csv")
     return cars, tracks
@@ -48,24 +47,23 @@ selected_json = st.sidebar.selectbox("Select a race session", json_files)
 # --- Load selected session data ---
 if selected_json:
     session_data = load_gcs_json(selected_json)
-    # Assume session_data is a list of dicts, get car/track from first entry
     first_entry = session_data[0]
     car_code = first_entry.get("car_code") or first_entry.get("car") or ""
     track_code = first_entry.get("track_code") or first_entry.get("track") or ""
 
     # --- Filter car and track info ---
-    car_info = cars_df[cars_df['Code'] == car_code].iloc[0] if car_code in cars_df['Code'].values else None
-    track_info = tracks_df[tracks_df['Code'] == track_code].iloc[0] if track_code in tracks_df['Code'].values else None
+    car_info = cars_df[cars_df['ID'] == car_code].iloc[0] if car_code in cars_df['ID'].values else None
+    track_info = tracks_df[tracks_df['ID'] == track_code].iloc[0] if track_code in tracks_df['ID'].values else None
 
     st.sidebar.markdown("### Car Used")
     if car_info is not None:
-        st.sidebar.write(car_info)
+        st.sidebar.write(car_info['ShortName'])
     else:
         st.sidebar.write("Unknown car code:", car_code)
 
     st.sidebar.markdown("### Track Used")
     if track_info is not None:
-        st.sidebar.write(track_info)
+        st.sidebar.write(track_info['Name'])
     else:
         st.sidebar.write("Unknown track code:", track_code)
 else:
@@ -81,7 +79,6 @@ import matplotlib.pyplot as plt
 # --- Convert session_data to DataFrame for analysis ---
 if selected_json and session_data:
     df = pd.DataFrame(session_data)
-    # Ensure timestamp is datetime if present
     if 'timestamp' in df.columns:
         df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
 else:
@@ -95,12 +92,12 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "Average Lap Times",
     "Advanced Visualizations"
 ])
+
 with tab1:
     st.header("Single Race Analysis")
     if df.empty:
         st.info("Select a session to view race analysis.")
     else:
-        # Dropdowns for lap selection (if multiple laps)
         laps = df['current_lap'].unique() if 'current_lap' in df.columns else [0]
         selected_lap = st.selectbox("Select Lap", sorted(laps))
         lap_df = df[df['current_lap'] == selected_lap] if 'current_lap' in df.columns else df
@@ -127,9 +124,9 @@ with tab1:
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("No position data available for driving line.")
+
 with tab2:
     st.header("Leaderboards")
-    # For demo: aggregate all available sessions in GCS
     st.info("Showing leaderboard for all available sessions in the bucket.")
     leaderboard = []
     for file in json_files:
@@ -144,8 +141,8 @@ with tab2:
             continue
         car_code = d.iloc[0].get("car_code") or d.iloc[0].get("car") or ""
         track_code = d.iloc[0].get("track_code") or d.iloc[0].get("track") or ""
-        car_name = cars_df[cars_df['Code'] == car_code]['Name'].values[0] if car_code in cars_df['Code'].values else car_code
-        track_name = tracks_df[tracks_df['Code'] == track_code]['Name'].values[0] if track_code in tracks_df['Code'].values else track_code
+        car_name = cars_df[cars_df['ID'] == car_code]['ShortName'].values[0] if car_code in cars_df['ID'].values else car_code
+        track_name = tracks_df[tracks_df['ID'] == track_code]['Name'].values[0] if track_code in tracks_df['ID'].values else track_code
         leaderboard.append({
             "Session": file,
             "Car": car_name,
@@ -160,11 +157,11 @@ with tab2:
         st.dataframe(lb_df.sort_values("Best Lap (s)"), use_container_width=True)
     else:
         st.info("No leaderboard data available.")
+
 with tab3:
     st.header("Lap/Car Comparison")
     st.info("Compare up to 4 laps (from different sessions/cars) on the same track.")
 
-    # Select up to 4 sessions
     compare_files = st.multiselect("Select up to 4 sessions to compare", json_files, max_selections=4)
     compare_laps = []
     for file in compare_files:
@@ -172,9 +169,9 @@ with tab3:
         if not data: continue
         d = pd.DataFrame(data)
         car_code = d.iloc[0].get("car_code") or d.iloc[0].get("car") or ""
-        car_name = cars_df[cars_df['Code'] == car_code]['Name'].values[0] if car_code in cars_df['Code'].values else car_code
+        car_name = cars_df[cars_df['ID'] == car_code]['ShortName'].values[0] if car_code in cars_df['ID'].values else car_code
         track_code = d.iloc[0].get("track_code") or d.iloc[0].get("track") or ""
-        track_name = tracks_df[tracks_df['Code'] == track_code]['Name'].values[0] if track_code in tracks_df['Code'].values else track_code
+        track_name = tracks_df[tracks_df['ID'] == track_code]['Name'].values[0] if track_code in tracks_df['ID'].values else track_code
         for lap in d['current_lap'].unique():
             compare_laps.append({
                 "Session": file,
@@ -189,7 +186,6 @@ with tab3:
             options=[f"{c['Car']} | {c['Track']} | Lap {c['Lap']} | {c['Session']}" for c in compare_laps],
             max_selections=4
         )
-        # Plot driving lines
         st.subheader("Driving Line Comparison")
         fig = go.Figure()
         for c in compare_laps:
@@ -206,18 +202,18 @@ with tab3:
         st.plotly_chart(fig, use_container_width=True)
     else:
         st.info("Select sessions to compare laps.")
+
 with tab4:
     st.header("Average Lap Times Per Car on Track")
-    # Aggregate all sessions
     avg_laps = []
     for file in json_files:
         data = load_gcs_json(file)
         if not data: continue
         d = pd.DataFrame(data)
         car_code = d.iloc[0].get("car_code") or d.iloc[0].get("car") or ""
-        car_name = cars_df[cars_df['Code'] == car_code]['Name'].values[0] if car_code in cars_df['Code'].values else car_code
+        car_name = cars_df[cars_df['ID'] == car_code]['ShortName'].values[0] if car_code in cars_df['ID'].values else car_code
         track_code = d.iloc[0].get("track_code") or d.iloc[0].get("track") or ""
-        track_name = tracks_df[tracks_df['Code'] == track_code]['Name'].values[0] if track_code in tracks_df['Code'].values else track_code
+        track_name = tracks_df[tracks_df['ID'] == track_code]['Name'].values[0] if track_code in tracks_df['ID'].values else track_code
         if 'lap_time' in d.columns:
             avg_lap = d['lap_time'].mean()
             avg_laps.append({
@@ -231,6 +227,7 @@ with tab4:
         st.bar_chart(avg_df.set_index("Car")["Avg Lap Time (s)"])
     else:
         st.info("No average lap time data available.")
+
 with tab5:
     st.header("Advanced Visualizations & Insights")
     st.info("Heatmaps, brake/accel/coast maps, and more.")
@@ -247,7 +244,6 @@ with tab5:
 
     if not df.empty and {'brake', 'throttle', 'position_x', 'position_y'}.issubset(df.columns):
         st.subheader("Brake/Coast/Accelerate Map")
-        # Classify each point
         def classify(row):
             if row['brake'] > 0.1:
                 return 'Brake'
@@ -262,5 +258,3 @@ with tab5:
             color_discrete_map={'Brake': 'red', 'Accelerate': 'green', 'Coast': 'yellow'}
         )
         st.plotly_chart(fig, use_container_width=True)
-
-    # Add more creative visualizations as needed!
