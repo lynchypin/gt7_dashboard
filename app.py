@@ -95,6 +95,7 @@ with tab1:
         selected_lap = st.selectbox("Select Lap", sorted(laps))
         lap_df = df[df['current_lap'] == selected_lap] if 'current_lap' in df.columns else df
         if 'time_on_track' in lap_df.columns:
+            lap_df = lap_df.copy()
             lap_df['time_on_track_seconds'] = pd.to_timedelta(lap_df['time_on_track']).dt.total_seconds()
 
         st.subheader("Speed vs. Time")
@@ -113,6 +114,7 @@ with tab2:
         selected_lap = st.selectbox("Select Lap (Inputs)", sorted(laps), key="inputs_lap")
         lap_df = df[df['current_lap'] == selected_lap] if 'current_lap' in df.columns else df
         if 'time_on_track' in lap_df.columns:
+            lap_df = lap_df.copy()
             lap_df['time_on_track_seconds'] = pd.to_timedelta(lap_df['time_on_track']).dt.total_seconds()
 
         st.subheader("Throttle, Brake Over Time")
@@ -174,7 +176,15 @@ with tab5:
     if not df.empty:
         st.subheader("Gear Usage Over Time")
         if 'current_gear' in df.columns and 'time_on_track_seconds' in df.columns:
-            fig = px.step(df, x='time_on_track_seconds', y='current_gear', title="Gear Usage Over Time")
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(
+                x=df['time_on_track_seconds'],
+                y=df['current_gear'],
+                mode='lines',
+                line_shape='hv',
+                name='Gear'
+            ))
+            fig.update_layout(title="Gear Usage Over Time", xaxis_title="Time (s)", yaxis_title="Gear")
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("No gear/time data available.")
@@ -248,6 +258,7 @@ with tab8:
         if not data: continue
         d = pd.DataFrame(data)
         if 'time_on_track' in d.columns:
+            d = d.copy()
             d['time_on_track_seconds'] = pd.to_timedelta(d['time_on_track']).dt.total_seconds()
         car_code = d.iloc[0].get("car_code") or d.iloc[0].get("car_id") or d.iloc[0].get("car") or ""
         car_name = cars_df[cars_df['ID'] == car_code]['ShortName'].values[0] if car_code in cars_df['ID'].values else car_code
