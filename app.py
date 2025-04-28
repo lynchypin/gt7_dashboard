@@ -8,9 +8,7 @@ import os
 # --- Load GCS credentials from Streamlit secrets ---
 from google.oauth2 import service_account
 
-gcs_creds = service_account.Credentials.from_service_account_info(
-    st.secrets["gcs"]["credentials"]
-)
+gcs_creds = service_account.Credentials.from_service_account_info(dict(st.secrets["gcs"]))
 gcs_bucket = st.secrets["gcs"]["bucket"]
 
 # --- Helper: GCS client ---
