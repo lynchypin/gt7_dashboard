@@ -135,8 +135,8 @@ with tab3:
         selected_lap = st.selectbox("Select Lap (Line)", sorted(laps), key="line_lap")
         lap_df = df[df['current_lap'] == selected_lap] if 'current_lap' in df.columns else df
         st.subheader("Track Map (Driving Line)")
-        if {'position_x', 'position_y'}.issubset(lap_df.columns):
-            fig = px.scatter(lap_df, x='position_x', y='position_y', color='car_speed',
+        if {'position_x', 'position_z'}.issubset(lap_df.columns):
+            fig = px.scatter(lap_df, x='position_x', y='position_z', color='car_speed',
                              title="Driving Line (colored by speed)", color_continuous_scale='Viridis')
             st.plotly_chart(fig, use_container_width=True)
         else:
@@ -144,17 +144,17 @@ with tab3:
 
 with tab4:
     st.header("Heatmaps & Action Maps")
-    if not df.empty and {'position_x', 'position_y', 'car_speed'}.issubset(df.columns):
+    if not df.empty and {'position_x', 'position_z', 'car_speed'}.issubset(df.columns):
         st.subheader("Speed Heatmap on Track")
         fig = px.density_heatmap(
-            df, x='position_x', y='position_y', z='car_speed',
+            df, x='position_x', y='position_z', z='car_speed',
             histfunc='avg', nbinsx=50, nbinsy=50,
             color_continuous_scale='Turbo',
             title="Speed Heatmap"
         )
         st.plotly_chart(fig, use_container_width=True)
 
-    if not df.empty and {'brake', 'throttle', 'position_x', 'position_y'}.issubset(df.columns):
+    if not df.empty and {'brake', 'throttle', 'position_x', 'position_z'}.issubset(df.columns):
         st.subheader("Brake/Coast/Accelerate Map")
         def classify(row):
             if row['brake'] > 0.1:
@@ -165,7 +165,7 @@ with tab4:
                 return 'Coast'
         df['action'] = df.apply(classify, axis=1)
         fig = px.scatter(
-            df, x='position_x', y='position_y', color='action',
+            df, x='position_x', y='position_z', color='action',
             title="Brake/Coast/Accelerate Map",
             color_discrete_map={'Brake': 'red', 'Accelerate': 'green', 'Coast': 'yellow'}
         )
@@ -234,9 +234,9 @@ with tab7:
     st.header("Elevation & Speed Histogram")
     if not df.empty:
         st.subheader("Elevation Map")
-        if {'position_x', 'position_y', 'position_z'}.issubset(df.columns):
-            fig = px.scatter(df, x='position_x', y='position_y', color='position_z',
-                             title="Track Elevation Map", color_continuous_scale='Viridis')
+        if {'position_x', 'position_z', 'position_y'}.issubset(df.columns):
+            fig = px.scatter(df, x='position_x', y='position_z', color='position_y',
+                             title="Track Elevation Map (color = height)", color_continuous_scale='Viridis')
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("No elevation data available.")
@@ -284,13 +284,13 @@ with tab8:
             label = f"{c['Car']} | Lap {c['Lap']}"
             if f"{c['Car']} | {c['Track']} | Lap {c['Lap']} | {c['Session']}" in selected_laps:
                 d = c['Data']
-                if {'position_x', 'position_y'}.issubset(d.columns):
+                if {'position_x', 'position_z'}.issubset(d.columns):
                     fig.add_trace(go.Scatter(
-                        x=d['position_x'], y=d['position_y'],
+                        x=d['position_x'], y=d['position_z'],
                         mode='lines', name=label,
                         line=dict(width=3)
                     ))
-        fig.update_layout(title="Driving Line Comparison", xaxis_title="X", yaxis_title="Y")
+        fig.update_layout(title="Driving Line Comparison", xaxis_title="X", yaxis_title="Z")
         st.plotly_chart(fig, use_container_width=True)
     else:
         st.info("Select sessions to compare laps.")
